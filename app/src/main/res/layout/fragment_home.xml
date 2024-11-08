@@ -23,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="5dp"
-            android:fontFamily="sans-serif"
+            android:fontFamily="@font/hahmlet"
             android:gravity="center"
             android:text="Запишите видео для начала работы"
             android:textColor="@color/white"
@@ -38,7 +38,7 @@
             android:padding="50dp"
             app:lottie_autoPlay="true"
             app:lottie_loop="true"
-            app:lottie_rawRes="@raw/regular_winking" />
+            app:lottie_rawRes="@raw/emotion_regular_winking" />
     </LinearLayout>
 
     <soup.neumorphism.NeumorphButton
@@ -47,7 +47,7 @@
         android:layout_height="70dp"
         android:layout_marginHorizontal="40dp"
         android:layout_marginBottom="70dp"
-        android:fontFamily="sans-serif"
+        android:fontFamily="@font/hahmlet"
         android:gravity="center"
         android:text="Записать видео"
         android:textColor="@color/white"
