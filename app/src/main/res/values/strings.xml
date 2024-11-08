@@ -1,9 +1,3 @@
 <resources>
     <string name="app_name">avatar</string>
-    <string name="verify_succeed">verify_succeed</string>
-    <string name="multiple_face_detected">multiple_face_detected</string>
-    <string name="no_face_detected">no_face_detected</string>
-    <string name="verify_timeout">verify_timeout</string>
-    <string name="liveness_failed">liveness_failed</string>
-    <string name="verify_failed">verify_failed</string>
 </resources>

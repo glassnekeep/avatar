@@ -2,20 +2,15 @@ package ru.ebica.avatar.camera
 
 import android.Manifest
 import android.animation.Animator
-import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -24,7 +19,6 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FileOutputOptions
-import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
@@ -40,7 +34,6 @@ import androidx.navigation.fragment.findNavController
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import ru.ebica.avatar.R
 import ru.ebica.avatar.databinding.FragmentCameraBinding
@@ -54,9 +47,8 @@ class CameraFragment : Fragment() {
     private var _binding: FragmentCameraBinding? = null
     private val binding get() = _binding!!
 
-    companion object {
-        private const val CAMERA_PERMISSION_REQUEST_CODE = 1
-    }
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var currentRecording: Recording? = null
 
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
@@ -104,16 +96,11 @@ class CameraFragment : Fragment() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        stopCameraPreview()
-    }
-
     private fun requestCameraPermission() {
         ActivityCompat.requestPermissions(
             requireActivity(),
             arrayOf(Manifest.permission.CAMERA),
-            CAMERA_PERMISSION_REQUEST_CODE
+            1
         )
     }
 
@@ -156,7 +143,7 @@ class CameraFragment : Fragment() {
     private var isFaceDetected = false
     private var faceDetectionStartTime: Long = 0
     private val handler = Handler(Looper.getMainLooper())
-    private val detectionDuration = 5000L // 5 секунд
+    private val detectionDuration = 5000L
 
     private val faceDetectionRunnable = Runnable {
         if (isFaceDetected) {
@@ -177,7 +164,6 @@ class CameraFragment : Fragment() {
                     binding.countdownTimer.gone()
 
                     binding.message.text = "Говорите"
-                    binding.endRecording.visible()
                     startRecording()
                 }
 
@@ -220,22 +206,15 @@ class CameraFragment : Fragment() {
         }
     }
 
-    private var videoCapture: VideoCapture<Recorder>? = null
-    private var currentRecording: Recording? = null
-
     private fun startRecording() {
-        // Проверяем, что videoCapture инициализирован
         val videoCapture = videoCapture ?: return
 
-        // Создаем файл для записи
         val videoFile = File(requireContext().externalMediaDirs.first(), "${System.currentTimeMillis()}.mp4")
         val outputOptions = FileOutputOptions.Builder(videoFile).build()
 
-        // Запускаем запись
         currentRecording = videoCapture.output
             .prepareRecording(requireContext(), outputOptions)
             .apply {
-                // Включаем запись звука, если есть разрешение
                 if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     withAudioEnabled()
                 }
@@ -243,22 +222,28 @@ class CameraFragment : Fragment() {
             .start(ContextCompat.getMainExecutor(requireContext())) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
-                        Toast.makeText(requireContext(), "Запись началась", Toast.LENGTH_SHORT).show()
+                        Log.e("MY_FLAG", "Запись началась")
                     }
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             Log.e("MY_FLAG", "Запись завершена. Сохранено: ${videoFile.absolutePath}")
-                            Toast.makeText(requireContext(), "Запись завершена. Сохранено: ${videoFile.absolutePath}", Toast.LENGTH_LONG).show()
+
+                            val cameraResponse = CameraResponse(
+                                videoFilePath = videoFile.absolutePath
+                            )
+                            setFragmentResult(cameraResponse)
                         } else {
-                            Toast.makeText(requireContext(), "Ошибка записи: ${recordEvent.error}", Toast.LENGTH_SHORT).show()
+                            Log.e("MY_FLAG", "Ошибка записи")
+                            val cameraResponse = CameraResponse(
+                                videoFilePath = null
+                            )
+                            setFragmentResult(cameraResponse)
                         }
                         currentRecording = null
                     }
                 }
             }
 
-        // Прячем элементы интерфейса и показываем кнопку завершения записи
-        binding.message.gone()
         binding.endRecording.visible()
     }
 
@@ -276,7 +261,6 @@ class CameraFragment : Fragment() {
 
         val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
-        // Подключаем preview, imageFrameAnalysis, videoCapture к CameraX lifecycle
         cameraProvider.bindToLifecycle(
             this as LifecycleOwner,
             cameraSelector,
@@ -290,6 +274,11 @@ class CameraFragment : Fragment() {
         })
 
         findNavController().navigateUp()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopCameraPreview()
     }
 
     override fun onDestroyView() {

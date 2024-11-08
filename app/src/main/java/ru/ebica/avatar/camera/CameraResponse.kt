@@ -5,7 +5,7 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class CameraResponse(
-    val videoFilePath: String
+    val videoFilePath: String?
 ) : Parcelable {
     companion object {
         val responseKey = "camera_response_key"

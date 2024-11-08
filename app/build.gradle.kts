@@ -69,7 +69,4 @@ dependencies {
 
     // ML Kit
     implementation("com.google.mlkit:face-detection:16.0.5")
-
-    // Face detection lib
-    implementation(files("libs/miniai_face.aar"))
 }
