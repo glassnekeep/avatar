@@ -1,28 +1,45 @@
 package ru.ebica.avatar.home
 
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.os.Bundle
-import android.util.Log
+import android.speech.tts.TextToSpeech
+import android.speech.tts.TextToSpeech.OnInitListener
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.w3c.dom.Text
 import ru.ebica.avatar.R
 import ru.ebica.avatar.camera.CameraRequest
 import ru.ebica.avatar.camera.CameraResponse
 import ru.ebica.avatar.databinding.FragmentHomeBinding
 import ru.ebica.avatar.camera_response.CameraResponseDialog
 import ru.ebica.avatar.camera_response.EmotionResponse
+import java.util.Locale
 
-class HomeFragment : Fragment() {
+class HomeFragment : Fragment(), OnInitListener {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+
+    private val viewModel: HomeViewModel by viewModels()
+
+    private lateinit var textToSpeech: TextToSpeech
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        textToSpeech = TextToSpeech(context, this)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -45,6 +62,13 @@ class HomeFragment : Fragment() {
         observeCameraResponse()
 
         observeEmotionResponse()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.speechFlow.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED)
+                .collect { data ->
+                    playVoice(data)
+                }
+        }
     }
 
     private fun observeCameraResponse() {
@@ -95,8 +119,33 @@ class HomeFragment : Fragment() {
         binding.emotion.playAnimation()
     }
 
+    private fun playVoice(voice: String) {
+        if (::textToSpeech.isInitialized) {
+            textToSpeech.speak(voice, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onDestroy() {
+        if (::textToSpeech.isInitialized) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+        super.onDestroy()
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale("ru", "RU"))
+
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                return
+            }
+            //textToSpeech.speak("Тестовый текст", TextToSpeech.QUEUE_FLUSH, null, null)
+        }
     }
 }
