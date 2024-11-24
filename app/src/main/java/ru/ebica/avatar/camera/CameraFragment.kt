@@ -3,6 +3,7 @@ package ru.ebica.avatar.camera
 import android.Manifest
 import android.animation.Animator
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -32,14 +33,22 @@ import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.fragment.findNavController
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.gson.Gson
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.microsoft.projectoxford.emotion.EmotionServiceClient
+import com.microsoft.projectoxford.emotion.EmotionServiceRestClient
+import com.microsoft.projectoxford.emotion.contract.RecognizeResult
+import com.microsoft.projectoxford.emotion.rest.EmotionServiceException
 import ru.ebica.avatar.R
 import ru.ebica.avatar.databinding.FragmentCameraBinding
 import ru.ebica.avatar.viewExtensions.gone
 import ru.ebica.avatar.viewExtensions.visible
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.Executors
 
 class CameraFragment : Fragment() {
@@ -64,6 +73,35 @@ class CameraFragment : Fragment() {
         processImageProxy(imageProxy)
     }
 
+    private val autoDetectionHandler = Handler(Looper.getMainLooper())
+    private val autoDetectionInterval = 5000L
+    private var isAutoDetectionRunning = false
+    private lateinit var emotionClient: EmotionServiceClient
+
+    private val autoDetectionRunnable = object : Runnable {
+        override fun run() {
+            if (isAutoDetectionRunning) {
+                captureCurrentFrame { bitmap ->
+                    bitmap?.let {
+                        runCatching {
+                            val emotionResults = processWithAutoFaceDetection(emotionClient, it)
+                            // Здесь можно обработать результат
+                            Log.e("MY_FLAG", "Emotion detection results: $emotionResults")
+                        }.onFailure { e ->
+                            Log.e("MY_FLAG", "Error processing emotions: ${e.message}")
+                        }
+                    }
+                }
+                autoDetectionHandler.postDelayed(this, autoDetectionInterval)
+            }
+        }
+    }
+
+    private fun captureCurrentFrame(callback: (Bitmap?) -> Unit) {
+        val surface = binding.previewView.bitmap
+        callback(surface)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -74,6 +112,8 @@ class CameraFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        emotionClient = EmotionServiceRestClient(getString(R.string.subscription_key))
+
         binding.endRecording.setOnClickListener {
             stopRecording()
         }
@@ -81,7 +121,6 @@ class CameraFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-
         cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
 
         if (
@@ -93,6 +132,7 @@ class CameraFragment : Fragment() {
             requestCameraPermission()
         } else {
             startCameraPreview()
+            startAutoDetection()
         }
     }
 
@@ -279,6 +319,40 @@ class CameraFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         stopCameraPreview()
+        stopAutoDetection()
+    }
+
+    private fun startAutoDetection() {
+        if (!isAutoDetectionRunning) {
+            isAutoDetectionRunning = true
+            autoDetectionHandler.post(autoDetectionRunnable)
+        }
+    }
+
+    private fun stopAutoDetection() {
+        isAutoDetectionRunning = false
+        autoDetectionHandler.removeCallbacks(autoDetectionRunnable)
+    }
+
+    @Throws(EmotionServiceException::class, IOException::class)
+    private fun processWithAutoFaceDetection(client: EmotionServiceClient, mBitmap: Bitmap): List<RecognizeResult>? {
+        val gson = Gson()
+        val output = ByteArrayOutputStream()
+        mBitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)
+        val inputStream = ByteArrayInputStream(output.toByteArray())
+
+        val startTime = System.currentTimeMillis()
+
+        val result = client.recognizeImage(inputStream)
+        val json = gson.toJson(result)
+        Log.e("MY_FLAG", json)
+
+        Log.e(
+            "MY_FLAG",
+            String.format("Detection done. Elapsed time: %d ms", (System.currentTimeMillis() - startTime))
+        )
+
+        return result
     }
 
     override fun onDestroyView() {

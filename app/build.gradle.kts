@@ -69,4 +69,6 @@ dependencies {
 
     // ML Kit
     implementation("com.google.mlkit:face-detection:16.0.5")
+
+    implementation("com.microsoft.projectoxford:emotion:1.0.0")
 }
