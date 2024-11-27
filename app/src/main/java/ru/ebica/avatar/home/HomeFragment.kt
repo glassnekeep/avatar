@@ -1,12 +1,16 @@
 package ru.ebica.avatar.home
 
+import android.app.Activity.RESULT_OK
+import android.content.Intent
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeech.OnInitListener
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
@@ -36,6 +40,16 @@ class HomeFragment : Fragment(), OnInitListener {
 
     private lateinit var textToSpeech: TextToSpeech
 
+    private val speechRecognizerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val recognizedText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            //tvResult.text = recognizedText?.get(0) ?: "Результат пустой"
+            Toast.makeText(context, recognizedText?.get(0) ?: "Результат пустой", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Ошибка распознавания речи", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         textToSpeech = TextToSpeech(context, this)
@@ -59,6 +73,10 @@ class HomeFragment : Fragment(), OnInitListener {
             findNavController().navigate(R.id.action_homeFragment_to_cameraFragment, bundle)
         }
 
+        binding.recordAudio.setOnClickListener {
+            startSpeechToText()
+        }
+
         observeCameraResponse()
 
         observeEmotionResponse()
@@ -68,6 +86,19 @@ class HomeFragment : Fragment(), OnInitListener {
                 .collect { data ->
                     playVoice(data)
                 }
+        }
+    }
+
+    private fun startSpeechToText() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+        }
+
+        try {
+            speechRecognizerLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Ваше устройство не поддерживает распознавание речи", Toast.LENGTH_SHORT).show()
         }
     }
 

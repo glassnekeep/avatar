@@ -12,7 +12,7 @@ class HomeViewModel : ViewModel() {
         // Демонстрации ради, в идеальном мире текст присылает бэк
         while(true) {
             emit("Текущее время: ${System.currentTimeMillis()}")
-            delay(10000)
+            delay(20000)
         }
     }.flowOn(Dispatchers.IO)
 }
