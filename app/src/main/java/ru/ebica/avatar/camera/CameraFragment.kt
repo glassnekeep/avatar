@@ -3,6 +3,8 @@ package ru.ebica.avatar.camera
 import android.Manifest
 import android.animation.Animator
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -15,6 +17,8 @@ import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -40,6 +44,7 @@ import ru.ebica.avatar.databinding.FragmentCameraBinding
 import ru.ebica.avatar.viewExtensions.gone
 import ru.ebica.avatar.viewExtensions.visible
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
 class CameraFragment : Fragment() {
@@ -49,6 +54,7 @@ class CameraFragment : Fragment() {
 
     private var videoCapture: VideoCapture<Recorder>? = null
     private var currentRecording: Recording? = null
+    private val cameraExecutor = Executors.newSingleThreadExecutor()
 
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
@@ -92,8 +98,79 @@ class CameraFragment : Fragment() {
         ) {
             requestCameraPermission()
         } else {
-            startCameraPreview()
+            startCamera()
         }
+    }
+
+    private fun startCamera() {
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder().build().also {
+                it.surfaceProvider = binding.previewView.surfaceProvider
+            }
+
+            val imageCapture = ImageCapture.Builder()
+                .setTargetRotation(requireActivity().window.decorView.display.rotation)
+                .build()
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                .build()
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(viewLifecycleOwner, cameraSelector, preview, imageCapture)
+                startPeriodicCapture(imageCapture)
+            } catch (exc: Exception) {
+                Log.e(TAG, "Camera binding failed", exc)
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    private fun startPeriodicCapture(imageCapture: ImageCapture) {
+        val outputDirectory = getOutputDirectory()
+
+        Executors.newSingleThreadExecutor().execute {
+            while (true) {
+                Thread.sleep(1000)
+                val file = File(outputDirectory, "IMG_${System.currentTimeMillis()}.png")
+                imageCapture.takePicture(cameraExecutor,
+                    object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(image: ImageProxy) {
+                            val bitmap = imageProxyToBitmap(image)
+                            saveBitmapAsPng(bitmap, file)
+                            image.close()
+                        }
+
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
+                        }
+                    })
+            }
+        }
+    }
+
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        val buffer = image.planes[0].buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    private fun saveBitmapAsPng(bitmap: Bitmap, file: File) {
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+    }
+
+    private fun getOutputDirectory(): File {
+        // Директория storage/emulated/0/Android/media/имя приложения на эмуляторе
+        // Внутреннее хранилище/Android/media/имя приложения на реальном девайсе
+        val mediaDir = requireContext().externalMediaDirs.firstOrNull()?.let {
+            File(it, "Avatar").apply { mkdirs() }
+        }
+        return if (mediaDir != null && mediaDir.exists()) mediaDir else requireContext().filesDir
     }
 
     private fun requestCameraPermission() {
@@ -286,5 +363,10 @@ class CameraFragment : Fragment() {
         _binding = null
         faceDetector.close()
         handler.removeCallbacks(faceDetectionRunnable)
+        cameraExecutor.shutdown()
+    }
+
+    companion object {
+        private const val TAG = "CAMERA"
     }
 }
