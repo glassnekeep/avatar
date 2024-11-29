@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -39,8 +40,14 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import ru.ebica.avatar.R
 import ru.ebica.avatar.databinding.FragmentCameraBinding
+import ru.ebica.avatar.network.AnalyzePhotoResponse
+import ru.ebica.avatar.network.RetrofitClient
+import ru.ebica.avatar.network.prepareFilePart
 import ru.ebica.avatar.viewExtensions.gone
 import ru.ebica.avatar.viewExtensions.visible
 import java.io.File
@@ -134,6 +141,7 @@ class CameraFragment : Fragment() {
         Executors.newSingleThreadExecutor().execute {
             while (true) {
                 Thread.sleep(1000)
+                val fileForBack = File("IMG_${System.currentTimeMillis()}.png")
                 val file = File(outputDirectory, "IMG_${System.currentTimeMillis()}.png")
                 imageCapture.takePicture(cameraExecutor,
                     object : ImageCapture.OnImageCapturedCallback() {
@@ -141,6 +149,8 @@ class CameraFragment : Fragment() {
                             val bitmap = imageProxyToBitmap(image)
                             saveBitmapAsPng(bitmap, file)
                             image.close()
+                            Thread.sleep(200)
+                            getEmotion(file)
                         }
 
                         override fun onError(exception: ImageCaptureException) {
@@ -356,6 +366,27 @@ class CameraFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         stopCameraPreview()
+    }
+
+    fun getEmotion(file: File) {
+        val type = prepareFilePart(file)
+        RetrofitClient.instance.analyzePhoto(type).enqueue(object : Callback<AnalyzePhotoResponse> {
+            override fun onResponse(
+                call: Call<AnalyzePhotoResponse>,
+                response: Response<AnalyzePhotoResponse>
+            ) {
+                val result = response.body()
+                if (result != null) {
+                    Toast.makeText(context, result.probabilities.toString(), Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Empty body", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<AnalyzePhotoResponse>, t: Throwable) {
+                Toast.makeText(context, "Failure", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     override fun onDestroyView() {
