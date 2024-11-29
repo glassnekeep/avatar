@@ -3,6 +3,8 @@ package ru.ebica.avatar.home
 import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeech.OnInitListener
@@ -11,24 +13,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.postDelayed
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.flowWithLifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.w3c.dom.Text
 import ru.ebica.avatar.R
 import ru.ebica.avatar.camera.CameraRequest
 import ru.ebica.avatar.camera.CameraResponse
-import ru.ebica.avatar.databinding.FragmentHomeBinding
 import ru.ebica.avatar.camera_response.CameraResponseDialog
 import ru.ebica.avatar.camera_response.EmotionResponse
+import ru.ebica.avatar.databinding.FragmentHomeBinding
 import java.util.Locale
 
 class HomeFragment : Fragment(), OnInitListener {
@@ -43,8 +38,10 @@ class HomeFragment : Fragment(), OnInitListener {
     private val speechRecognizerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
             val recognizedText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            //tvResult.text = recognizedText?.get(0) ?: "Результат пустой"
-            Toast.makeText(context, recognizedText?.get(0) ?: "Результат пустой", Toast.LENGTH_SHORT).show()
+            Handler(Looper.getMainLooper()).postDelayed(300L) {
+                playVoice(recognizedText?.get(0) ?: "Я вас не понимаю")
+            }
+            //Toast.makeText(context, recognizedText?.get(0) ?: "Результат пустой", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(context, "Ошибка распознавания речи", Toast.LENGTH_SHORT).show()
         }
@@ -81,12 +78,12 @@ class HomeFragment : Fragment(), OnInitListener {
 
         observeEmotionResponse()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.speechFlow.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED)
-                .collect { data ->
-                    playVoice(data)
-                }
-        }
+//        viewLifecycleOwner.lifecycleScope.launch {
+//            viewModel.speechFlow.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED)
+//                .collect { data ->
+//                    playVoice(data)
+//                }
+//        }
     }
 
     private fun startSpeechToText() {
