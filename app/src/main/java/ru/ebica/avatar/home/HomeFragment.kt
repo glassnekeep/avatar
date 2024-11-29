@@ -1,16 +1,25 @@
 package ru.ebica.avatar.home
 
+import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeech.OnInitListener
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
@@ -19,6 +28,7 @@ import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,6 +49,8 @@ class HomeFragment : Fragment(), OnInitListener {
     private val viewModel: HomeViewModel by viewModels()
 
     private lateinit var textToSpeech: TextToSpeech
+
+    private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
     private val speechRecognizerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
@@ -65,13 +77,13 @@ class HomeFragment : Fragment(), OnInitListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recordVideo.setOnClickListener {
-            val request = CameraRequest("some parament")
-            val bundle = Bundle().apply {
-                putParcelable(CameraRequest.requestKey, request)
-            }
-            findNavController().navigate(R.id.action_homeFragment_to_cameraFragment, bundle)
-        }
+        //binding.recordVideo.setOnClickListener {
+        //    val request = CameraRequest("some parament")
+        //    val bundle = Bundle().apply {
+        //        putParcelable(CameraRequest.requestKey, request)
+        //    }
+        //    findNavController().navigate(R.id.action_homeFragment_to_cameraFragment, bundle)
+        //}
 
         binding.recordAudio.setOnClickListener {
             startSpeechToText()
@@ -86,6 +98,23 @@ class HomeFragment : Fragment(), OnInitListener {
                 .collect { data ->
                     playVoice(data)
                 }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+
+        if (
+            ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestCameraPermission()
+        } else {
+            startCamera()
         }
     }
 
@@ -116,8 +145,8 @@ class HomeFragment : Fragment(), OnInitListener {
             return
         }
 
-        binding.message.text = ""
-        binding.recordVideo.text = "Записать новое видео"
+        //binding.message.text = ""
+        //binding.recordVideo.text = "Записать новое видео"
 
         val dialog = CameraResponseDialog.newInstance(response)
         dialog.show(parentFragmentManager, "CameraResultDialog")
@@ -178,5 +207,43 @@ class HomeFragment : Fragment(), OnInitListener {
             }
             //textToSpeech.speak("Тестовый текст", TextToSpeech.QUEUE_FLUSH, null, null)
         }
+    }
+
+    private fun startCamera() {
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder().build().also {
+                it.surfaceProvider = binding.previewView.surfaceProvider
+            }
+
+            val imageCapture = ImageCapture.Builder()
+                .setTargetRotation(requireActivity().window.decorView.display.rotation)
+                .build()
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                .build()
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(viewLifecycleOwner, cameraSelector, preview, imageCapture)
+                //startPeriodicCapture(imageCapture)
+            } catch (exc: Exception) {
+                Log.e(TAG, "Camera binding failed", exc)
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    private fun requestCameraPermission() {
+        ActivityCompat.requestPermissions(
+            requireActivity(),
+            arrayOf(Manifest.permission.CAMERA),
+            1
+        )
+    }
+
+    companion object {
+        private const val TAG = "HOME"
     }
 }
