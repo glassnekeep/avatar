@@ -16,24 +16,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.os.postDelayed
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.postDelayed
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import com.google.common.util.concurrent.ListenableFuture
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.w3c.dom.Text
 import ru.ebica.avatar.R
-import ru.ebica.avatar.camera.CameraRequest
 import ru.ebica.avatar.camera.CameraResponse
 import ru.ebica.avatar.camera_response.CameraResponseDialog
 import ru.ebica.avatar.camera_response.EmotionResponse
@@ -54,7 +48,8 @@ class HomeFragment : Fragment(), OnInitListener {
     private val speechRecognizerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
             val recognizedText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            Handler(Looper.getMainLooper()).postDelayed(300L) {
+            processEmotionResponse(response = EmotionResponse.generateRandomEmotionResult())
+            Handler(Looper.getMainLooper()).postDelayed(700L) {
                 playVoice(recognizedText?.get(0) ?: "Я вас не понимаю")
             }
             //Toast.makeText(context, recognizedText?.get(0) ?: "Результат пустой", Toast.LENGTH_SHORT).show()
