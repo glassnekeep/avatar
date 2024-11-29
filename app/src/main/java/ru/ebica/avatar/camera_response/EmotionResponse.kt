@@ -24,6 +24,7 @@ data class EmotionResponse(
         Crying,
         Happy,
         Loved,
-        Sad
+        Sad,
+        Normal
     }
 }

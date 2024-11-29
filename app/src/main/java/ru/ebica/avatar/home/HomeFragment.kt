@@ -169,6 +169,7 @@ class HomeFragment : Fragment(), OnInitListener {
             EmotionResponse.Emotion.Happy -> R.raw.emotion_happy
             EmotionResponse.Emotion.Loved -> R.raw.emotion_loved
             EmotionResponse.Emotion.Sad -> R.raw.emotion_sad
+            EmotionResponse.Emotion.Normal -> R.raw.emotion_regular_winking
         }
 
         binding.emotion.setAnimation(animationResId)
