@@ -15,7 +15,7 @@ import java.io.File
 
 interface ApiService {
     @Multipart
-    @POST("analyze-photo")
+    @POST("analyze-photo/")
     fun analyzePhoto(
         @Part file: MultipartBody.Part
     ): Call<AnalyzePhotoResponse>
