@@ -26,13 +26,19 @@ import androidx.core.os.postDelayed
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import ru.ebica.avatar.R
 import ru.ebica.avatar.camera.CameraResponse
 import ru.ebica.avatar.camera_response.CameraResponseDialog
 import ru.ebica.avatar.camera_response.EmotionResponse
 import ru.ebica.avatar.databinding.FragmentHomeBinding
 import java.util.Locale
+import kotlin.random.Random
 
 class HomeFragment : Fragment(), OnInitListener {
 
@@ -47,6 +53,10 @@ class HomeFragment : Fragment(), OnInitListener {
 
     private val speechRecognizerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
+//            viewLifecycleOwner.lifecycleScope.apply {
+//                cancel()
+//                launch { showEmotions() }
+//            }
             val recognizedText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             processEmotionResponse(response = EmotionResponse.generateRandomEmotionResult())
             Handler(Looper.getMainLooper()).postDelayed(700L) {
@@ -70,8 +80,19 @@ class HomeFragment : Fragment(), OnInitListener {
         return binding.root
     }
 
+    private suspend fun CoroutineScope.showEmotions() {
+        while(isActive) {
+            val delay = Random.nextInt(3, 5)
+            delay(timeMillis = delay * 1000L)
+            processEmotionResponse(response = EmotionResponse.generateRandomEmotionResult())
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        viewLifecycleOwner.lifecycleScope.launch {
+            showEmotions()
+        }
 
         //binding.recordVideo.setOnClickListener {
         //    val request = CameraRequest("some parament")
