@@ -9,75 +9,49 @@
     android:orientation="vertical"
     tools:context=".home.HomeFragment">
 
-    <LinearLayout
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@+id/record_video"
-        app:layout_constraintEnd_toEndOf="parent"
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/emotion"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:layout_marginTop="35dp"
+        android:background="@drawable/background_circle"
+        android:padding="50dp"
+        app:lottie_autoPlay="true"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <TextView
-            android:id="@+id/message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="5dp"
-            android:fontFamily="@font/hahmlet"
-            android:gravity="center"
-            android:text="Запишите видео для начала работы"
-            android:textColor="@color/white"
-            android:textSize="22sp" />
-
-        <com.airbnb.lottie.LottieAnimationView
-            android:id="@+id/emotion"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
-            android:layout_marginTop="15dp"
-            android:background="@drawable/background_circle"
-            android:padding="50dp"
-            app:lottie_autoPlay="true"
-            app:lottie_loop="true"
-            app:lottie_rawRes="@raw/emotion_regular_winking" />
-    </LinearLayout>
-
-    <soup.neumorphism.NeumorphButton
-        android:id="@+id/record_video"
-        android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:layout_marginHorizontal="40dp"
-        android:layout_marginBottom="20dp"
-        android:fontFamily="@font/hahmlet"
-        android:gravity="center"
-        android:text="Записать видео"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@id/record_audio"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:neumorph_backgroundColor="@color/blue"
-        app:neumorph_shadowColorDark="@color/black"
-        app:neumorph_shadowColorLight="@color/light_blue"
-        app:neumorph_shapeType="flat" />
+        app:lottie_loop="true"
+        app:lottie_rawRes="@raw/emotion_regular_winking" />
 
     <soup.neumorphism.NeumorphButton
         android:id="@+id/record_audio"
         android:layout_width="match_parent"
         android:layout_height="70dp"
         android:layout_marginHorizontal="40dp"
-        android:layout_marginBottom="70dp"
         android:fontFamily="@font/hahmlet"
         android:gravity="center"
         android:text="Записать аудио"
         android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/emotion"
+        android:layout_marginTop="10dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:neumorph_backgroundColor="@color/blue"
         app:neumorph_shadowColorDark="@color/black"
         app:neumorph_shadowColorLight="@color/light_blue"
         app:neumorph_shapeType="flat" />
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/preview_view"
+        android:layout_width="match_parent"
+        android:layout_marginTop="15dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/record_audio">
+
+    </androidx.camera.view.PreviewView>
 </androidx.constraintlayout.widget.ConstraintLayout>
