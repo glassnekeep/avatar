@@ -69,4 +69,8 @@ dependencies {
 
     // ML Kit
     implementation("com.google.mlkit:face-detection:16.0.5")
+
+    //Retrofit
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 }
